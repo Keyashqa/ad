@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>CycleHub Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <header style="display:flex; justify-content:space-between; margin-bottom:20px;">
+        <h2 id="greet">Welcome</h2>
+        <button onclick="localStorage.clear(); location.href='login.html'"
+            style="width:100px; background:#ef4444">Logout</button>
+    </header>
+
+    <div class="main-layout">
+        <div class="products-grid" id="grid"></div>
+
+        <div class="column cart-panel">
+            <h3>Current Cart</h3>
+            <div id="cart-list"></div>
+            <hr>
+            <p><strong>Total: $<span id="total-price">0</span></strong></p>
+            <button onclick="checkout()" style="background:#10b981">Checkout</button>
+        </div>
+
+        <div class="column history-panel">
+            <h3>Order History</h3>
+            <div id="history-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const user = localStorage.getItem('user');
+        document.getElementById('greet').innerText = "Welcome, " + user;
+        let cart = [];
+        const prodDetails = [
+            { id: 1, name: "Heavy Duty Chain", icon: "🔗", price: 25 },
+            { id: 2, name: "Mountain Tire", icon: "⭕", price: 45 },
+            { id: 3, name: "Alloy Pedal", icon: "🚲", price: 30 }
+        ];
+
+        async function init() {
+            await loadStock();
+            await loadHistory();
+        }
+
+        async function loadStock() {
+            const res = await fetch('http://localhost:3000/items');
+            const stock = await res.json();
+            const grid = document.getElementById('grid');
+            grid.innerHTML = "";
+            prodDetails.forEach(p => {
+                const s = stock.find(item => item.id === p.id);
+                const out = s.qty <= 0;
+                grid.innerHTML += `
+                    <div class="card">
+                        <div class="prod-img">${p.icon}</div>
+                        <h4>${p.name}</h4>
+                        <p class="price">$${p.price} | Stock: ${s.qty}</p>
+                        <button ${out ? 'disabled' : ''} onclick="addToCart(${p.id},'${p.name}',${p.price})">
+                            ${out ? 'Out of Stock' : 'Add to Cart'}
+                        </button>
+                    </div>`;
+            });
+        }
+
+        async function loadHistory() {
+            const res = await fetch(`http://localhost:3000/history/${user}`);
+            const logs = await res.json();
+            const hList = document.getElementById('history-list');
+            hList.innerHTML = logs.map(l => `
+                <div class="history-item">
+                    <strong>${l.item_name}</strong> - $${l.price}
+                    <span>${l.date}</span>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id, name, price) {
+            cart.push({ id, name, price });
+            document.getElementById('cart-list').innerHTML = cart.map(i => `
+                <div class="cart-item"><span>${i.name}</span><span>$${i.price}</span></div>
+            `).join('');
+            document.getElementById('total-price').innerText = cart.reduce((s, i) => s + i.price, 0);
+        }
+
+        async function checkout() {
+            if (!cart.length) return alert("Cart empty");
+            const res = await fetch('http://localhost:3000/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cart, user })
+            });
+            if (res.ok) {
+                alert("Success!");
+                cart = [];
+                document.getElementById('cart-list').innerHTML = "";
+                document.getElementById('total-price').innerText = "0";
+                init(); // Refresh stock and history
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Databases & Local Data
+*.db
+*.db-journal
+
+# Secrets & Environment
+.env
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+
+users.db
+
